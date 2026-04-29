@@ -1,9 +1,9 @@
 {
-  "name": "charlie-ai",
-  "displayName": "Charlie ai",
-  "version": "0.0.1",
-  "description": "cd charlie-ai",
-  "author": "npm run dev",
+  "name": "veil",
+  "displayName": "Veil",
+  "version": "0.1.0",
+  "description": "Your personal privacy companion. Powered by Charlie.",
+  "author": "Oates Technology",
   "scripts": {
     "dev": "plasmo dev",
     "build": "plasmo build",
@@ -23,9 +23,31 @@
     "prettier": "3.2.4",
     "typescript": "5.3.3"
   },
+  "icons": {
+    "16": "assets/icon16.png",
+    "32": "assets/icon32.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
   "manifest": {
     "host_permissions": [
-      "https://*/*"
+      "https://*/*",
+      "http://*/*",
+      "https://safebrowsing.googleapis.com/*",
+      "https://haveibeenpwned.com/*",
+      "https://api.anthropic.com/*"
+    ],
+    "permissions": [
+      "storage",
+      "notifications",
+      "tabs",
+      "activeTab"
+    ],
+    "web_accessible_resources": [
+      {
+        "resources": ["privacy-policy.html"],
+        "matches": ["<all_urls>"]
+      }
     ]
   }
 }

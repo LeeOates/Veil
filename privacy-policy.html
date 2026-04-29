@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Veil — Privacy Policy</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif;
+      background: #F2F1EE;
+      color: #1A1A18;
+      min-height: 100vh;
+    }
+    header {
+      background: #FFFFFF;
+      border-bottom: 0.5px solid #E2E0DB;
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: #1A1A18;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .header-text h1 { font-size: 16px; font-weight: 500; letter-spacing: -0.3px; }
+    .header-text p { font-size: 11px; color: #9E9C97; margin-top: 1px; }
+
+    main {
+      max-width: 680px;
+      margin: 40px auto;
+      padding: 0 24px 60px;
+    }
+    .card {
+      background: #FFFFFF;
+      border-radius: 12px;
+      border: 0.5px solid #E2E0DB;
+      padding: 28px 32px;
+      margin-bottom: 16px;
+    }
+    h2 {
+      font-size: 20px;
+      font-weight: 500;
+      letter-spacing: -0.4px;
+      margin-bottom: 6px;
+    }
+    .subtitle {
+      font-size: 12px;
+      color: #9E9C97;
+      margin-bottom: 24px;
+    }
+    h3 {
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #9E9C97;
+      margin: 24px 0 10px;
+    }
+    h3:first-of-type { margin-top: 0; }
+    p, li {
+      font-size: 13px;
+      color: #5A5955;
+      line-height: 1.7;
+    }
+    ul { padding-left: 18px; }
+    li { margin-bottom: 4px; }
+    a { color: #1A1A18; font-weight: 500; }
+    .highlight {
+      background: #E6F4EC;
+      border: 0.5px solid #34D399;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin: 16px 0 0;
+    }
+    .highlight p {
+      font-size: 12px;
+      color: #1E7A3E;
+      font-weight: 500;
+    }
+    footer {
+      text-align: center;
+      font-size: 11px;
+      color: #C4C2BC;
+      margin-top: 32px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg width="20" height="17" viewBox="0 0 13 11" fill="#A855F7" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="0" width="2" height="1"/><rect x="8" y="0" width="2" height="1"/>
+      <rect x="3" y="1" width="2" height="1"/><rect x="8" y="1" width="2" height="1"/>
+      <rect x="3" y="2" width="7" height="1"/>
+      <rect x="2" y="3" width="9" height="1"/>
+      <rect x="2" y="4" width="9" height="1"/>
+      <rect x="2" y="5" width="1" height="1"/><rect x="4" y="5" width="5" height="1"/><rect x="10" y="5" width="1" height="1"/>
+      <rect x="0" y="6" width="13" height="1"/>
+      <rect x="0" y="7" width="13" height="1"/>
+      <rect x="2" y="8" width="9" height="1"/>
+      <rect x="3" y="9" width="2" height="1"/><rect x="8" y="9" width="2" height="1"/>
+      <rect x="3" y="10" width="2" height="1"/><rect x="8" y="10" width="2" height="1"/>
+    </svg>
+  </div>
+  <div class="header-text">
+    <h1>Veil</h1>
+    <p>Privacy Policy — Powered by Charlie</p>
+  </div>
+</header>
+
+<main>
+
+  <div class="card">
+    <h2>Privacy Policy</h2>
+    <p class="subtitle">Effective date: April 2026 · Oates Technology</p>
+
+    <h3>Overview</h3>
+    <p>
+      Veil is a browser security extension that helps you identify privacy risks, trackers,
+      dark patterns, and security threats on the websites you visit. This policy explains what
+      data we collect, how we use it, and — most importantly — what we never do with it.
+    </p>
+
+    <div class="highlight">
+      <p>Veil never transmits your browsing history, personal information, or page contents to any server we control. All analysis runs locally in your browser.</p>
+    </div>
+
+    <h3>Data we process locally</h3>
+    <p>When you visit a page, Veil's content script analyses the page in your browser to detect:</p>
+    <ul>
+      <li>Third-party tracker scripts and pixels</li>
+      <li>Cookie counts and cookie-consent banner quality</li>
+      <li>Dark patterns in page text and UI elements</li>
+      <li>Password form safety (HTTP vs HTTPS submission)</li>
+      <li>Fingerprinting scripts</li>
+      <li>AI-generated content signals</li>
+      <li>Phishing and typosquatting indicators</li>
+    </ul>
+    <p style="margin-top:10px">
+      This analysis is performed entirely within your browser. None of this page content is
+      sent to Oates Technology.
+    </p>
+
+    <h3>External API calls</h3>
+    <p>With your explicit consent (by providing API keys in Settings), Veil may contact:</p>
+    <ul>
+      <li>
+        <strong>Google Safe Browsing API</strong> — sends the current page URL to Google's
+        threat database to check for malware or phishing. Governed by
+        <a href="https://policies.google.com/privacy" target="_blank" rel="noreferrer">Google's Privacy Policy</a>.
+      </li>
+      <li>
+        <strong>Anthropic Claude API</strong> — sends anonymised risk signal metadata
+        (score, tracker count, flag list) to generate a plain-English explanation.
+        No page content or personal data is included.
+        Governed by <a href="https://www.anthropic.com/privacy" target="_blank" rel="noreferrer">Anthropic's Privacy Policy</a>.
+      </li>
+      <li>
+        <strong>HaveIBeenPwned API</strong> — sends the current site's domain (not your
+        email or personal details) to check whether that domain has been involved in a
+        known data breach. No account credentials are transmitted.
+        Governed by <a href="https://haveibeenpwned.com/Privacy" target="_blank" rel="noreferrer">HIBP's Privacy Policy</a>.
+      </li>
+    </ul>
+
+    <h3>Scan history</h3>
+    <p>
+      Veil stores a short history of scanned sites (up to 60 entries) in Chrome's local
+      extension storage on your device. This data never leaves your browser. You can
+      clear it at any time from the Settings page.
+    </p>
+
+    <h3>API keys</h3>
+    <p>
+      API keys you enter are stored in Chrome's local extension storage on your device
+      only. They are never transmitted to Oates Technology servers.
+    </p>
+
+    <h3>Permissions we request</h3>
+    <ul>
+      <li><strong>storage</strong> — to save your settings and scan history locally.</li>
+      <li><strong>tabs / activeTab</strong> — to read the URL of the active tab so Veil can analyse it.</li>
+      <li><strong>notifications</strong> — to show a Chrome notification when a high-risk page is detected (only if you enable this in Settings).</li>
+    </ul>
+
+    <h3>Children's privacy</h3>
+    <p>Veil does not knowingly collect any personal information from anyone, including children.</p>
+
+    <h3>Changes to this policy</h3>
+    <p>
+      If this policy changes materially, we will update the effective date above and note
+      the changes in the extension's release notes.
+    </p>
+
+    <h3>Contact</h3>
+    <p>
+      Questions? Reach us at <a href="mailto:privacy@oatestechnology.com">privacy@oatestechnology.com</a>.
+    </p>
+  </div>
+
+  <footer>Oates Technology · Veil · Powered by Charlie</footer>
+
+</main>
+
+</body>
+</html>

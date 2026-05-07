@@ -17,9 +17,29 @@ chrome.runtime.onInstalled.addListener((details) => {
 })
 
 chrome.tabs.onRemoved.addListener((tabId) => tabScanCache.delete(tabId))
-chrome.tabs.onUpdated.addListener((tabId, change) => {
-  if (change.status === "loading") tabScanCache.delete(tabId)
+chrome.tabs.onUpdated.addListener((tabId, change, tab) => {
+  if (change.status === "loading") {
+    tabScanCache.delete(tabId)
+    // Switch to inactive (grey) icon while the page loads or if it's a restricted URL
+    const url = tab.url ?? change.url ?? ""
+    const restricted = !url.startsWith("http://") && !url.startsWith("https://")
+    setIconVariant(tabId, restricted ? "inactive" : "active")
+  }
 })
+
+// ─── Icon variant helper ───────────────────────────────────────────────────────
+function setIconVariant(tabId: number, variant: "active" | "inactive") {
+  const suffix = variant === "inactive" ? "-inactive" : ""
+  chrome.action.setIcon({
+    tabId,
+    path: {
+      "16":  chrome.runtime.getURL(`assets/icon16${suffix}.png`),
+      "32":  chrome.runtime.getURL(`assets/icon32${suffix}.png`),
+      "48":  chrome.runtime.getURL(`assets/icon48${suffix}.png`),
+      "128": chrome.runtime.getURL(`assets/icon128${suffix}.png`),
+    },
+  }).catch(() => {})  // tab may have closed before the call resolves
+}
 
 // ─── Message Router ────────────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -65,7 +85,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       return true
 
     case "UPDATE_BADGE":
-      if (_sender.tab?.id) tabScanCache.set(_sender.tab.id, message)
+      if (_sender.tab?.id) {
+        tabScanCache.set(_sender.tab.id, message)
+        // Scan completed — restore active (purple) icon
+        setIconVariant(_sender.tab.id, "active")
+      }
       updateBadgeForTab(message, _sender.tab?.id).catch(() => {})
       sendResponse({ ok: true })
       return false

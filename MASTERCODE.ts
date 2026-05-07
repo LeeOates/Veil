@@ -90,6 +90,18 @@
 //   • tsconfig.json: added MASTERCODE.ts to exclude list (prevents backup file from polluting
 //     type-checking — was surfacing false positives across the project)
 //
+// [2026-05-07] — Phase 2.3: Icon set — sharp rendering + greyscale inactive variant
+//   • assets/icon{16,32,48,128}.png: re-rendered from extracted 16×14 logical pixel grid
+//     using nearest-neighbor at exact integer dot sizes (1/2/3/8 px per dot respectively)
+//     — eliminates antialiasing blur that previous bilinear downsample introduced at 16px
+//   • assets/icon{16,32,48,128}-inactive.png: greyscale (#808080) variants at all 4 sizes,
+//     same logical grid, for use on restricted pages (chrome://, about:, new tab)
+//   • background.ts: setIconVariant(tabId, "active"|"inactive") helper — calls
+//     chrome.action.setIcon() with the correct path set for all 4 sizes
+//   • background.ts: onUpdated listener extended — switches to inactive icon while tab is
+//     loading or URL is non-HTTP (restricted); restores active icon on UPDATE_BADGE
+//   • package.json: inactive PNG assets added to web_accessible_resources
+//
 // [2026-05-07] — Phase 2.2: Empty state copy
 //   • popup.tsx: Trackers empty state — "No known trackers detected." →
 //     "No trackers found — your activity isn't being shared with ad networks."

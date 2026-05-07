@@ -45,7 +45,14 @@
     ],
     "web_accessible_resources": [
       {
-        "resources": ["privacy-policy.html", "onboarding.html"],
+        "resources": [
+          "privacy-policy.html",
+          "onboarding.html",
+          "assets/icon16-inactive.png",
+          "assets/icon32-inactive.png",
+          "assets/icon48-inactive.png",
+          "assets/icon128-inactive.png"
+        ],
         "matches": ["<all_urls>"]
       }
     ]

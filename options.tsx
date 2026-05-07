@@ -21,7 +21,7 @@ const tokens = {
   red:           "#B91C1C",
   redBg:         "#FEE9E9",
   redRing:       "#EF4444",
-  logoMark:      "#1A1A18",
+  logoMark:      "#FFFFFF",
   radius:        "12px",
   radiusSm:      "8px",
   radiusPill:    "999px",
@@ -252,6 +252,7 @@ export default function OptionsPage() {
         <div style={{
           width: 32, height: 32, borderRadius: 8,
           background: tokens.logoMark,
+          border: `0.5px solid ${tokens.borderDefault}`,
           display: "flex", alignItems: "center", justifyContent: "center",
         }}>
           <VeilLogo />

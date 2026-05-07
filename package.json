@@ -2,7 +2,7 @@
   "name": "veil",
   "displayName": "Veil",
   "version": "0.1.0",
-  "description": "Your personal privacy companion. Powered by Charlie.",
+  "description": "Your personal AI-powered privacy companion.",
   "author": "Oates Technology",
   "scripts": {
     "dev": "plasmo dev",
@@ -45,7 +45,7 @@
     ],
     "web_accessible_resources": [
       {
-        "resources": ["privacy-policy.html"],
+        "resources": ["privacy-policy.html", "onboarding.html"],
         "matches": ["<all_urls>"]
       }
     ]

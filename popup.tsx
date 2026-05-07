@@ -60,7 +60,7 @@ const tokens = {
   redBg:      "#FEE9E9",
   redRing:    "#EF4444",
 
-  logoMark:   "#1A1A18",
+  logoMark:   "#FFFFFF",
   radius:     "12px",
   radiusSm:   "8px",
   radiusPill: "999px",
@@ -803,6 +803,7 @@ footer{text-align:center;font-size:11px;color:#C4C2BC;margin-top:28px}
           <div style={{
             width: 28, height: 28, borderRadius: 7,
             background: tokens.logoMark,
+            border: `0.5px solid ${tokens.borderDefault}`,
             display: "flex", alignItems: "center", justifyContent: "center",
           }}>
             <VeilLogo />
@@ -870,7 +871,7 @@ footer{text-align:center;font-size:11px;color:#C4C2BC;margin-top:28px}
                 </div>
               ) : trackers.length === 0 ? (
                 <FadeIn>
-                  <EmptyState text="No known trackers detected." variant="good" />
+                  <EmptyState text="No trackers found — your activity isn't being shared with ad networks." variant="good" />
                 </FadeIn>
               ) : (
                 <FadeIn>
@@ -917,21 +918,33 @@ footer{text-align:center;font-size:11px;color:#C4C2BC;margin-top:28px}
             </Section>
 
             {/* Dark Patterns */}
-            {hasFullData && darkPats.length > 0 && (
+            {hasFullData && (
               <SlideDown>
                 <Section>
                   <SectionTitle>Dark patterns</SectionTitle>
-                  {darkPats.map((p, i) => <FlagRow key={i} text={p} type="warn" />)}
+                  {darkPats.length === 0 ? (
+                    <FadeIn>
+                      <EmptyState text="No manipulative design patterns detected." variant="good" />
+                    </FadeIn>
+                  ) : (
+                    darkPats.map((p, i) => <FlagRow key={i} text={p} type="warn" />)
+                  )}
                 </Section>
               </SlideDown>
             )}
 
             {/* Fingerprinting */}
-            {hasFullData && fingerprinting.length > 0 && (
+            {hasFullData && (
               <SlideDown delay={40}>
                 <Section>
                   <SectionTitle>Fingerprinting</SectionTitle>
-                  {fingerprinting.map((f, i) => <FlagRow key={i} text={f} type="warn" />)}
+                  {fingerprinting.length === 0 ? (
+                    <FadeIn>
+                      <EmptyState text="No fingerprinting scripts detected." variant="good" />
+                    </FadeIn>
+                  ) : (
+                    fingerprinting.map((f, i) => <FlagRow key={i} text={f} type="warn" />)
+                  )}
                 </Section>
               </SlideDown>
             )}
@@ -1081,7 +1094,7 @@ footer{text-align:center;font-size:11px;color:#C4C2BC;margin-top:28px}
                 </>
               ) : flags.length === 0 ? (
                 <FadeIn>
-                  <EmptyState text="No security flags found." variant="good" />
+                  <EmptyState text="Nothing flagged — this page's content looks clean." variant="good" />
                 </FadeIn>
               ) : (
                 <FadeIn>
@@ -1091,21 +1104,33 @@ footer{text-align:center;font-size:11px;color:#C4C2BC;margin-top:28px}
             </Section>
 
             {/* Password Safety */}
-            {hasFullData && passwordWarnings.length > 0 && (
+            {hasFullData && (
               <SlideDown delay={40}>
                 <Section>
                   <SectionTitle>Password safety</SectionTitle>
-                  {passwordWarnings.map((w, i) => <FlagRow key={i} text={w} type="warn" />)}
+                  {passwordWarnings.length === 0 ? (
+                    <FadeIn>
+                      <EmptyState text="No password security issues detected." variant="good" />
+                    </FadeIn>
+                  ) : (
+                    passwordWarnings.map((w, i) => <FlagRow key={i} text={w} type="warn" />)
+                  )}
                 </Section>
               </SlideDown>
             )}
 
             {/* Permission Requests */}
-            {hasFullData && permissionIssues.length > 0 && (
+            {hasFullData && (
               <SlideDown delay={60}>
                 <Section>
                   <SectionTitle>Permission requests</SectionTitle>
-                  {permissionIssues.map((p, i) => <FlagRow key={i} text={p} type="warn" />)}
+                  {permissionIssues.length === 0 ? (
+                    <FadeIn>
+                      <EmptyState text="No unusual permission requests found." variant="good" />
+                    </FadeIn>
+                  ) : (
+                    permissionIssues.map((p, i) => <FlagRow key={i} text={p} type="warn" />)
+                  )}
                 </Section>
               </SlideDown>
             )}

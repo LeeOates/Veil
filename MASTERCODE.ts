@@ -2,7 +2,7 @@
 // VEIL — MASTERCODE BACKUP
 // Project: Veil Browser Extension (Plasmo / Chrome MV3)
 // Author:  Oates Technology
-// Description: Your personal privacy companion. Powered by Charlie.
+// Description: Your personal AI-powered privacy companion.
 //
 // ─── CHANGELOG ────────────────────────────────────────────────────────────────
 //
@@ -61,6 +61,63 @@
 //   • package.json: added http://*/* to host_permissions; explicit icon size entries
 //   • Assets: Space Invader pixel art icon (purple, transparent) exported at 16/32/48/128px
 //
+// [2026-04-30] — Phase 1 bug fixes: edge-case guards, detector hardening, score calibration
+//   • content.ts (Phase 1.1): BLOCKED_HOSTS set (app.notion.com + extensible)
+//   • content.ts (Phase 1.1): shouldSkip() — skips PDF, non-HTTP protocols, no body, blocked hosts
+//   • content.ts (Phase 1.1): safeSend() — silences "Extension context invalidated" errors;
+//     replaces all direct chrome.runtime.sendMessage calls
+//   • content.ts (Phase 1.1): init() wrapped in try/catch; shouldSkip() guard at top of init
+//   • content.ts (Phase 1.2): every detector function wrapped in outer try/catch returning []
+//   • content.ts (Phase 1.2): document.body.innerText replaced with document.body?.innerText ?? ""
+//     in all detectors (null-safe)
+//   • content.ts (Phase 1.2): heavy DOM query loops (querySelectorAll) wrapped individually
+//   • content.ts (Phase 1.2): runProactiveScan() calls each detector in isolated IIFE try/catch
+//     so one crashing detector can never abort the full scan
+//   • content.ts (Phase 1.3): score penalty calibration after simulating 14 site categories:
+//       – darkPatterns per-pattern: 5 → 8  (single dark pattern now meaningfully lowers score)
+//       – dataBroker penalty: 20 → 37      (data brokers now correctly land in HIGH RISK)
+//   • popup.tsx: tokens.logoMark changed from "#1A1A18" → "#FFFFFF" (white logo background)
+//   • popup.tsx: logo container div — border: 0.5px solid tokens.borderDefault added
+//   • options.tsx: tokens.logoMark changed from "#1A1A18" → "#FFFFFF" (white logo background)
+//   • options.tsx: logo container div — border: 0.5px solid tokens.borderDefault added
+//   • assets/icon*.png: Python/Pillow script — dark pixel background replaced with white
+//     (purple pixels R>100,B>150,G<150 preserved; dark brightness<80,alpha>100 → #FFFFFF)
+//   • package.json: description updated — "Powered by Charlie" removed for store submission
+//   • package.json: manifest audit confirms MV3 compliance; version 0.1.0 → bump to 1.0.0
+//     pre-submission (tabs permission confirmed needed for onRemoved/onUpdated listeners)
+//   • content.ts tooltip logo: background changed from #1A1A18 → #FFFFFF to match icon
+//   • background.ts: removed unused `import type { PlasmoMessaging }` (dead import, type error)
+//   • tsconfig.json: added MASTERCODE.ts to exclude list (prevents backup file from polluting
+//     type-checking — was surfacing false positives across the project)
+//
+// [2026-05-07] — Phase 2.2: Empty state copy
+//   • popup.tsx: Trackers empty state — "No known trackers detected." →
+//     "No trackers found — your activity isn't being shared with ad networks."
+//   • popup.tsx: Security flags empty state — "No security flags found." →
+//     "Nothing flagged — this page's content looks clean."
+//   • popup.tsx: Dark patterns — changed from hidden-when-clean to always-visible section;
+//     empty state: "No manipulative design patterns detected." (variant=good)
+//   • popup.tsx: Fingerprinting — changed from hidden-when-clean to always-visible section;
+//     empty state: "No fingerprinting scripts detected." (variant=good)
+//   • popup.tsx: Password safety — changed from hidden-when-clean to always-visible section;
+//     empty state: "No password security issues detected." (variant=good)
+//   • popup.tsx: Permission requests — changed from hidden-when-clean to always-visible section;
+//     empty state: "No unusual permission requests found." (variant=good)
+//   → Both tabs now always show what was checked, even when results are clean
+//
+// [2026-05-07] — Phase 2.1: Onboarding page
+//   • onboarding.html: first-run page opened automatically on install — covers:
+//       – Hero section: what Veil is, 3 active-state badges
+//       – "What Veil checks" grid (8 detectors with icons)
+//       – Step 2: Google Safe Browsing API key input (saves to charlieai_settings)
+//       – Step 3: Anthropic API key input (saves to charlieai_settings)
+//       – Step 4: Feature toggles (hover tooltip, risky link warning, badge, notifications)
+//       – "Open Full Settings" CTA → chrome.runtime.openOptionsPage()
+//       – Loads existing settings on open, masks saved keys with ••••
+//       – Inline JS writes directly to chrome.storage.local — no page reload needed
+//   • background.ts: chrome.runtime.onInstalled listener → opens onboarding.html on reason=install
+//   • package.json: web_accessible_resources += onboarding.html
+//
 // [2026-04-22] — HIBP breach alert, AI-generated site flag UI, privacy policy, new icons
 //   • content.ts: aiGeneratedSignals now included in cachedResult (was computed but not stored)
 //   • content.ts: CHECK_BREACH async call added to runProactiveScan(); breachInfo stored in
@@ -109,7 +166,7 @@
   "name": "veil",
   "displayName": "Veil",
   "version": "0.1.0",
-  "description": "Your personal privacy companion. Powered by Charlie.",
+  "description": "Your personal AI-powered privacy companion.",
   "author": "Oates Technology",
   "scripts": {
     "dev": "plasmo dev",
@@ -167,7 +224,7 @@
 /*
 {
   "extends": "plasmo/templates/tsconfig.base",
-  "exclude": ["node_modules"],
+  "exclude": ["node_modules", "MASTERCODE.ts"],
   "include": [
     ".plasmo/index.d.ts",
     "./**/*.ts",
@@ -184,8 +241,6 @@
 // ───────────────────────────────────────────────────────────────────────────────
 // FILE 3: background.ts
 // ───────────────────────────────────────────────────────────────────────────────
-
-import type { PlasmoMessaging } from "@plasmohq/messaging"
 
 export {}
 
@@ -492,6 +547,40 @@ export const config: PlasmoCSConfig = {
   matches: ["https://*/*", "http://*/*"]
 }
 
+// ─── Edge-Case Guard ──────────────────────────────────────────────────────────
+// Skip tabs where DOM scanning would throw or be meaningless
+const BLOCKED_HOSTS = new Set([
+  "app.notion.com",        // complex SPA — avoid noise
+])
+
+function shouldSkip(): boolean {
+  try {
+    if (!document.body) return true
+    if (document.contentType === "application/pdf") return true
+    const proto = location.protocol
+    if (proto !== "http:" && proto !== "https:") return true
+    if (BLOCKED_HOSTS.has(location.hostname)) return true
+    return false
+  } catch {
+    return true
+  }
+}
+
+// ─── Safe Message Sender ──────────────────────────────────────────────────────
+// Silences "Extension context invalidated" errors after extension updates
+function safeSend(message: object, callback?: (r: any) => void) {
+  try {
+    if (!chrome?.runtime?.id) return
+    if (callback) {
+      chrome.runtime.sendMessage(message, callback)
+    } else {
+      chrome.runtime.sendMessage(message)
+    }
+  } catch {
+    // Extension context gone — silently ignore
+  }
+}
+
 // ─── Tracker Map ──────────────────────────────────────────────────────────────
 const TRACKER_MAP: Record<string, string> = {
   "google-analytics.com": "Google Analytics",
@@ -524,115 +613,139 @@ const TRACKER_MAP: Record<string, string> = {
 
 // ─── Detect Trackers ──────────────────────────────────────────────────────────
 function detectTrackers(): string[] {
-  const found = new Set<string>()
-  const currentHost = location.hostname
-  const checkSrc = (src: string) => {
-    const s = src.toLowerCase()
-    for (const [domain, name] of Object.entries(TRACKER_MAP)) {
-      if (s.includes(domain)) found.add(name)
+  try {
+    const found = new Set<string>()
+    const currentHost = location.hostname
+    const checkSrc = (src: string) => {
+      const s = src.toLowerCase()
+      for (const [domain, name] of Object.entries(TRACKER_MAP)) {
+        if (s.includes(domain)) found.add(name)
+      }
     }
-  }
-  document.querySelectorAll("script[src]").forEach((el) => checkSrc((el as HTMLScriptElement).src))
-  document.querySelectorAll("iframe[src]").forEach((el) => checkSrc((el as HTMLIFrameElement).src))
-  document.querySelectorAll("img[src]").forEach((el) => {
-    const src = (el as HTMLImageElement).src
-    if (!src.includes(currentHost)) checkSrc(src)
-  })
-  return Array.from(found)
+    try { document.querySelectorAll("script[src]").forEach((el) => checkSrc((el as HTMLScriptElement).src)) } catch {}
+    try { document.querySelectorAll("iframe[src]").forEach((el) => checkSrc((el as HTMLIFrameElement).src)) } catch {}
+    try {
+      document.querySelectorAll("img[src]").forEach((el) => {
+        const src = (el as HTMLImageElement).src
+        if (!src.includes(currentHost)) checkSrc(src)
+      })
+    } catch {}
+    return Array.from(found)
+  } catch { return [] }
 }
 
 // ─── Count Cookies ────────────────────────────────────────────────────────────
 function countCookies(): number {
-  return document.cookie
-    ? document.cookie.split(";").filter((c) => c.trim().length > 0).length
-    : 0
+  try {
+    return document.cookie
+      ? document.cookie.split(";").filter((c) => c.trim().length > 0).length
+      : 0
+  } catch { return 0 }
 }
 
 // ─── Detect Dark Patterns ─────────────────────────────────────────────────────
 function detectDarkPatterns(): string[] {
-  const patterns = new Set<string>()
-  const bodyText = document.body.innerText
+  try {
+    const patterns = new Set<string>()
+    const bodyText = document.body?.innerText ?? ""
 
-  document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]:checked').forEach((cb) => {
-    const label =
-      cb.closest("label")?.textContent ||
-      document.querySelector(`label[for="${cb.id}"]`)?.textContent || ""
-    if (/newsletter|subscribe|marketing|promotional|offers|updates|emails/i.test(label))
-      patterns.add("Pre-checked marketing consent checkbox")
-  })
+    try {
+      document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]:checked').forEach((cb) => {
+        const label =
+          cb.closest("label")?.textContent ||
+          document.querySelector(`label[for="${cb.id}"]`)?.textContent || ""
+        if (/newsletter|subscribe|marketing|promotional|offers|updates|emails/i.test(label))
+          patterns.add("Pre-checked marketing consent checkbox")
+      })
+    } catch {}
 
-  if (/\d{1,2}\s*:\s*\d{2}\s*:\s*\d{2}/.test(bodyText) ||
-      /offer ends in|only \d+ (left|remaining)|limited time/i.test(bodyText))
-    patterns.add("Countdown timer / artificial urgency")
+    if (/\d{1,2}\s*:\s*\d{2}\s*:\s*\d{2}/.test(bodyText) ||
+        /offer ends in|only \d+ (left|remaining)|limited time/i.test(bodyText))
+      patterns.add("Countdown timer / artificial urgency")
 
-  if (/no thanks,?\s*i (don'?t|hate|prefer not)/i.test(bodyText) ||
-      /i don'?t want (to save|deals|discounts|offers)/i.test(bodyText))
-    patterns.add("Confirm-shaming opt-out language")
+    if (/no thanks,?\s*i (don'?t|hate|prefer not)/i.test(bodyText) ||
+        /i don'?t want (to save|deals|discounts|offers)/i.test(bodyText))
+      patterns.add("Confirm-shaming opt-out language")
 
-  document.querySelectorAll<HTMLElement>("a, button, span").forEach((el) => {
-    if (!/unsubscribe|opt.?out/i.test(el.textContent || "")) return
-    const s = window.getComputedStyle(el)
-    if (parseFloat(s.fontSize) < 10 || parseFloat(s.opacity) < 0.3)
-      patterns.add("Hidden or near-invisible unsubscribe link")
-  })
+    try {
+      document.querySelectorAll<HTMLElement>("a, button, span").forEach((el) => {
+        if (!/unsubscribe|opt.?out/i.test(el.textContent || "")) return
+        const s = window.getComputedStyle(el)
+        if (parseFloat(s.fontSize) < 10 || parseFloat(s.opacity) < 0.3)
+          patterns.add("Hidden or near-invisible unsubscribe link")
+      })
+    } catch {}
 
-  if (/free trial/i.test(bodyText) && /credit card/i.test(bodyText))
-    patterns.add("Free trial requiring credit card")
+    if (/free trial/i.test(bodyText) && /credit card/i.test(bodyText))
+      patterns.add("Free trial requiring credit card")
 
-  if (/subscribe|sign up/i.test(bodyText) && !/cancel|unsubscribe/i.test(bodyText))
-    patterns.add("Subscription with no visible cancel option")
+    if (/subscribe|sign up/i.test(bodyText) && !/cancel|unsubscribe/i.test(bodyText))
+      patterns.add("Subscription with no visible cancel option")
 
-  Array.from(document.querySelectorAll<HTMLElement>("button, a, span"))
-    .filter((el) => /skip|no thanks|maybe later/i.test(el.textContent || ""))
-    .forEach((el) => {
-      if (parseFloat(window.getComputedStyle(el).fontSize) < 11)
-        patterns.add("Misdirection: skip option hidden in tiny text")
-    })
+    try {
+      Array.from(document.querySelectorAll<HTMLElement>("button, a, span"))
+        .filter((el) => /skip|no thanks|maybe later/i.test(el.textContent || ""))
+        .forEach((el) => {
+          if (parseFloat(window.getComputedStyle(el).fontSize) < 11)
+            patterns.add("Misdirection: skip option hidden in tiny text")
+        })
+    } catch {}
 
-  return Array.from(patterns)
+    return Array.from(patterns)
+  } catch { return [] }
 }
 
 // ─── Page Security Flags ──────────────────────────────────────────────────────
 function detectPageFlags(): string[] {
-  const flags: string[] = []
-  const pageText = document.body.innerText.toLowerCase()
-  const currentHost = location.hostname
+  try {
+    const flags: string[] = []
+    const pageText = (document.body?.innerText ?? "").toLowerCase()
+    const currentHost = location.hostname
 
-  if (document.querySelectorAll('input[type="password"]').length > 0) flags.push("Password field on page")
+    try { if (document.querySelectorAll('input[type="password"]').length > 0) flags.push("Password field on page") } catch {}
 
-  if (/act (now|immediately)|urgent(ly)?|immediate action|expire[sd]? (today|in \d)/i.test(pageText))
-    flags.push("Urgency language detected")
+    if (/act (now|immediately)|urgent(ly)?|immediate action|expire[sd]? (today|in \d)/i.test(pageText))
+      flags.push("Urgency language detected")
 
-  const phishPhrases = ["verify your account","confirm your identity","update your billing",
-    "your payment failed","we have detected unusual activity","click here to confirm","your account will be suspended"]
-  if (phishPhrases.some((p) => pageText.includes(p))) flags.push("Phishing language detected")
+    const phishPhrases = ["verify your account","confirm your identity","update your billing",
+      "your payment failed","we have detected unusual activity","click here to confirm","your account will be suspended"]
+    if (phishPhrases.some((p) => pageText.includes(p))) flags.push("Phishing language detected")
 
-  if (pageText.includes("credit card") || pageText.includes("card number")) flags.push("Credit card info requested")
-  if (pageText.includes("social security") || pageText.includes("ssn")) flags.push("SSN / government ID requested")
+    if (pageText.includes("credit card") || pageText.includes("card number")) flags.push("Credit card info requested")
+    if (pageText.includes("social security") || pageText.includes("ssn")) flags.push("SSN / government ID requested")
 
-  document.querySelectorAll("form").forEach((form) => {
-    const action = form.getAttribute("action") || ""
-    if (action.startsWith("http") && !action.includes(currentHost))
-      flags.push("Form submits to external domain")
-  })
+    try {
+      document.querySelectorAll("form").forEach((form) => {
+        const action = form.getAttribute("action") || ""
+        if (action.startsWith("http") && !action.includes(currentHost))
+          flags.push("Form submits to external domain")
+      })
+    } catch {}
 
-  if (document.querySelectorAll('input[type="hidden"]').length > 10) flags.push("Excessive hidden form fields")
+    try { if (document.querySelectorAll('input[type="hidden"]').length > 10) flags.push("Excessive hidden form fields") } catch {}
 
-  const extScripts = Array.from(document.querySelectorAll("script[src]"))
-    .filter((s) => { const src = (s as HTMLScriptElement).src; return src && !src.includes(currentHost) })
-  if (extScripts.length > 8) flags.push("High count of external scripts")
+    try {
+      const extScripts = Array.from(document.querySelectorAll("script[src]"))
+        .filter((s) => { const src = (s as HTMLScriptElement).src; return src && !src.includes(currentHost) })
+      if (extScripts.length > 8) flags.push("High count of external scripts")
+    } catch {}
 
-  const bigBrands = ["paypal","amazon","google","apple","microsoft","netflix","facebook","instagram","bank of america","chase","wells fargo"]
-  if (bigBrands.some((b) => document.title.toLowerCase().includes(b)) &&
-      !bigBrands.some((b) => currentHost.includes(b)))
-    flags.push("Brand impersonation in page title")
+    try {
+      const bigBrands = ["paypal","amazon","google","apple","microsoft","netflix","facebook","instagram","bank of america","chase","wells fargo"]
+      if (bigBrands.some((b) => document.title.toLowerCase().includes(b)) &&
+          !bigBrands.some((b) => currentHost.includes(b)))
+        flags.push("Brand impersonation in page title")
+    } catch {}
 
-  const shorteners = ["bit.ly","tinyurl.com","t.co","goo.gl","ow.ly","rb.gy"]
-  const shortLinkCount = Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href]"))
-    .filter((a) => shorteners.some((s) => a.href.includes(s))).length
-  if (shortLinkCount > 2) flags.push("Multiple shortened / obfuscated links")
+    try {
+      const shorteners = ["bit.ly","tinyurl.com","t.co","goo.gl","ow.ly","rb.gy"]
+      const shortLinkCount = Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href]"))
+        .filter((a) => shorteners.some((s) => a.href.includes(s))).length
+      if (shortLinkCount > 2) flags.push("Multiple shortened / obfuscated links")
+    } catch {}
 
-  return flags
+    return flags
+  } catch { return [] }
 }
 
 // ─── Quick URL Heuristic Score ────────────────────────────────────────────────
@@ -679,7 +792,7 @@ function showTooltip(e: MouseEvent, url: string) {
   try { domain = new URL(url).hostname } catch {}
   tooltip!.innerHTML = `
     <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
-      <div style="width:18px;height:18px;background:#1A1A18;border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+      <div style="width:18px;height:18px;background:#FFFFFF;border:0.5px solid #E2E0DB;border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
         <svg width="12" height="10" viewBox="0 0 13 11" fill="#A855F7" xmlns="http://www.w3.org/2000/svg">
           <rect x="3" y="0" width="2" height="1"/><rect x="8" y="0" width="2" height="1"/>
           <rect x="3" y="1" width="2" height="1"/><rect x="8" y="1" width="2" height="1"/>
@@ -743,7 +856,7 @@ function setupLinkClickInterceptor() {
     const { score } = quickScoreUrl(href)
     if (score < 65) {
       e.preventDefault(); e.stopPropagation(); hideTooltip()
-      chrome.runtime.sendMessage({ type: "SHOW_NOTIFICATION", title: "Veil — Risky Link Detected", body: `Score ${score}/100. That link looks suspicious. Be careful!` })
+      safeSend({ type: "SHOW_NOTIFICATION", title: "Veil — Risky Link Detected", body: `Score ${score}/100. That link looks suspicious. Be careful!` })
       showLinkWarning(href, score, () => { window.location.href = href })
     }
   }, true)
@@ -803,8 +916,9 @@ function showLinkWarning(url: string, score: number, onProceed: () => void) {
 
 // ─── AI-Generated Site Detector ──────────────────────────────────────────────
 function detectAiGeneratedSite(): string[] {
+  try {
   const signals: string[] = []
-  const text = document.body.innerText
+  const text = document.body?.innerText ?? ""
   const aiPhrases = [
     /in (this|the) (article|post|guide|blog)[,\s].{0,30}(will|shall) (explore|discuss|delve|examine|cover)/i,
     /it (is|'?s) (important|crucial|essential|worth) to note that/i,
@@ -824,100 +938,117 @@ function detectAiGeneratedSite(): string[] {
   if (aiPhraseHits >= 1 && !hasByline && !hasAuthorMeta) signals.push("No human authorship signals")
   if (aiPhraseHits >= 1 && !hasDate && !hasRealEmail) signals.push("No human contact or publication date")
   return signals
+  } catch { return [] }
 }
 
 // ─── Fingerprinting Shield ────────────────────────────────────────────────────
 function detectFingerprinting(): string[] {
-  const signals: string[] = []
-  const allCode = Array.from(document.querySelectorAll("script"))
-    .map((s) => (s.src ? s.src : s.textContent || "")).join(" ").toLowerCase()
-  const patterns: [RegExp, string][] = [
-    [/fingerprintjs|fingerprint2|fpjs|fingerprint\.js/, "Browser fingerprinting library (FingerprintJS)"],
-    [/clientjs|client\.js/,                              "Browser fingerprinting library (ClientJS)"],
-    [/todataurl.*canvas|canvas.*todataurl/,              "Canvas fingerprinting detected"],
-    [/audiocontext|offlineaudiocontext/,                 "Audio fingerprinting detected"],
-    [/webgl.*getparameter|getparameter.*webgl/,          "WebGL fingerprinting detected"],
-    [/navigator\.plugins.*length|plugins.*navigator/,    "Plugin enumeration detected"],
-    [/screen\.colorDepth|screen\.pixelDepth/,            "Screen fingerprinting detected"],
-  ]
-  for (const [pattern, label] of patterns) {
-    if (pattern.test(allCode)) signals.push(label)
-  }
-  return signals
+  try {
+    const signals: string[] = []
+    const allCode = Array.from(document.querySelectorAll("script"))
+      .map((s) => (s.src ? s.src : s.textContent || "")).join(" ").toLowerCase()
+    const patterns: [RegExp, string][] = [
+      [/fingerprintjs|fingerprint2|fpjs|fingerprint\.js/, "Browser fingerprinting library (FingerprintJS)"],
+      [/clientjs|client\.js/,                              "Browser fingerprinting library (ClientJS)"],
+      [/todataurl.*canvas|canvas.*todataurl/,              "Canvas fingerprinting detected"],
+      [/audiocontext|offlineaudiocontext/,                 "Audio fingerprinting detected"],
+      [/webgl.*getparameter|getparameter.*webgl/,          "WebGL fingerprinting detected"],
+      [/navigator\.plugins.*length|plugins.*navigator/,    "Plugin enumeration detected"],
+      [/screen\.colorDepth|screen\.pixelDepth/,            "Screen fingerprinting detected"],
+    ]
+    for (const [pattern, label] of patterns) {
+      if (pattern.test(allCode)) signals.push(label)
+    }
+    return signals
+  } catch { return [] }
 }
 
 // ─── Cookie Consent Grader ────────────────────────────────────────────────────
 function gradeCookieConsent(): { grade: string; issues: string[] } {
-  const bodyText = document.body.innerText
-  const hasBanner = /cookie|consent|gdpr/i.test(bodyText) && /accept|agree|allow/i.test(bodyText)
-  if (!hasBanner) return { grade: "N/A", issues: [] }
-  const issues: string[] = []
-  if (!/reject all|decline all|deny all|refuse all/i.test(bodyText)) issues.push('No "reject all" option')
-  if (!/necessary only|essential only|reject non-essential/i.test(bodyText)) issues.push('No "essential only" option')
-  const preChecked = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]:checked'))
-    .some((cb) => {
-      const label = cb.closest("label")?.textContent || document.querySelector(`label[for="${cb.id}"]`)?.textContent || ""
-      return /marketing|analytics|advertising|targeting|social/i.test(label)
-    })
-  if (preChecked) issues.push("Marketing cookies pre-checked")
-  if (/we share your data|sold to partners|third.party advertising/i.test(bodyText)) issues.push("Admits selling data to third parties")
-  const grade = issues.length === 0 ? "A" : issues.length === 1 ? "B" : issues.length === 2 ? "C" : "D"
-  return { grade, issues }
+  try {
+    const bodyText = document.body?.innerText ?? ""
+    const hasBanner = /cookie|consent|gdpr/i.test(bodyText) && /accept|agree|allow/i.test(bodyText)
+    if (!hasBanner) return { grade: "N/A", issues: [] }
+    const issues: string[] = []
+    if (!/reject all|decline all|deny all|refuse all/i.test(bodyText)) issues.push('No "reject all" option')
+    if (!/necessary only|essential only|reject non-essential/i.test(bodyText)) issues.push('No "essential only" option')
+    try {
+      const preChecked = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]:checked'))
+        .some((cb) => {
+          const label = cb.closest("label")?.textContent || document.querySelector(`label[for="${cb.id}"]`)?.textContent || ""
+          return /marketing|analytics|advertising|targeting|social/i.test(label)
+        })
+      if (preChecked) issues.push("Marketing cookies pre-checked")
+    } catch {}
+    if (/we share your data|sold to partners|third.party advertising/i.test(bodyText)) issues.push("Admits selling data to third parties")
+    const grade = issues.length === 0 ? "A" : issues.length === 1 ? "B" : issues.length === 2 ? "C" : "D"
+    return { grade, issues }
+  } catch { return { grade: "N/A", issues: [] } }
 }
 
 // ─── Password Field Safety ────────────────────────────────────────────────────
 function checkPasswordSafety(): string[] {
-  const warnings: string[] = []
-  const host = location.hostname
-  document.querySelectorAll("form").forEach((form) => {
-    if (!form.querySelector('input[type="password"]')) return
-    if (location.protocol === "http:") warnings.push("Password submitted over unencrypted HTTP")
-    const action = form.getAttribute("action") || ""
-    if (action.startsWith("http://")) warnings.push("Login form posts to non-HTTPS endpoint")
-    if (action.startsWith("http") && !action.includes(host)) warnings.push("Login form submits to a different domain")
-  })
-  return [...new Set(warnings)]
+  try {
+    const warnings: string[] = []
+    const host = location.hostname
+    document.querySelectorAll("form").forEach((form) => {
+      try {
+        if (!form.querySelector('input[type="password"]')) return
+        if (location.protocol === "http:") warnings.push("Password submitted over unencrypted HTTP")
+        const action = form.getAttribute("action") || ""
+        if (action.startsWith("http://")) warnings.push("Login form posts to non-HTTPS endpoint")
+        if (action.startsWith("http") && !action.includes(host)) warnings.push("Login form submits to a different domain")
+      } catch {}
+    })
+    return [...new Set(warnings)]
+  } catch { return [] }
 }
 
 // ─── Data Broker Detector ─────────────────────────────────────────────────────
 function isDataBrokerSite(): boolean {
-  const DATA_BROKERS = [
-    "spokeo.com","whitepages.com","intelius.com","beenverified.com",
-    "truthfinder.com","instantcheckmate.com","peoplefinder.com",
-    "mylife.com","radaris.com","acxiom.com","epsilon.com",
-    "pipl.com","peekyou.com","zabasearch.com","usersearch.org",
-    "fastpeoplesearch.com","peoplelooker.com","privateye.com",
-    "archives.com","addresses.com","anywho.com","411.com",
-  ]
-  const host = location.hostname.replace(/^www\./, "")
-  return DATA_BROKERS.some((b) => host === b || host.endsWith("." + b))
+  try {
+    const DATA_BROKERS = [
+      "spokeo.com","whitepages.com","intelius.com","beenverified.com",
+      "truthfinder.com","instantcheckmate.com","peoplefinder.com",
+      "mylife.com","radaris.com","acxiom.com","epsilon.com",
+      "pipl.com","peekyou.com","zabasearch.com","usersearch.org",
+      "fastpeoplesearch.com","peoplelooker.com","privateye.com",
+      "archives.com","addresses.com","anywho.com","411.com",
+    ]
+    const host = location.hostname.replace(/^www\./, "")
+    return DATA_BROKERS.some((b) => host === b || host.endsWith("." + b))
+  } catch { return false }
 }
 
 // ─── AI Phishing Detector ─────────────────────────────────────────────────────
 function detectAiPhishing(): string[] {
-  const signals: string[] = []
-  const text = document.body.innerText
-  const hasUrgency = /immediately|urgent|within 24 hours|account.*suspend|verify.*now|action required|limited time/i.test(text)
-  const asksCredentials = /enter.*password|confirm.*login|verify.*identity|update.*payment|provide.*card/i.test(text)
-  const asksPersonalInfo = /social security|date of birth|mother.*maiden|national id|passport number/i.test(text)
-  const fakeOfficial = /official notice|security department|compliance team|fraud prevention team/i.test(text)
-  const brandSpoofInText = /paypal|amazon|apple|microsoft|google|netflix|bank of america|chase|wells fargo/i.test(text)
-  const isBrandDomain = /paypal|amazon|apple|microsoft|google|netflix|bankofamerica|chase|wellsfargo/i.test(location.hostname)
-  if (hasUrgency && asksCredentials) signals.push("Urgency + credential request (AI phishing pattern)")
-  if (hasUrgency && asksPersonalInfo) signals.push("Urgency + personal info request")
-  if (fakeOfficial && !isBrandDomain && brandSpoofInText) signals.push("Fake official communication from impersonated brand")
-  const host = location.hostname.replace(/^www\./, "")
-  const BRANDS = ["paypal","amazon","google","apple","microsoft","netflix","facebook","instagram","twitter","chase","wellsfargo","bankofamerica"]
-  for (const brand of BRANDS) {
-    if (!host.includes(brand)) {
-      const normalized = host.replace(/0/g,"o").replace(/1/g,"l").replace(/rn/g,"m").replace(/vv/g,"w").replace(/\-/g,"")
-      if (normalized.includes(brand) || levenshtein(host.replace(/\.[^.]+$/,""), brand) <= 2) {
-        signals.push(`Possible typosquat of "${brand}"`)
-        break
+  try {
+    const signals: string[] = []
+    const text = document.body?.innerText ?? ""
+    const hasUrgency = /immediately|urgent|within 24 hours|account.*suspend|verify.*now|action required|limited time/i.test(text)
+    const asksCredentials = /enter.*password|confirm.*login|verify.*identity|update.*payment|provide.*card/i.test(text)
+    const asksPersonalInfo = /social security|date of birth|mother.*maiden|national id|passport number/i.test(text)
+    const fakeOfficial = /official notice|security department|compliance team|fraud prevention team/i.test(text)
+    const brandSpoofInText = /paypal|amazon|apple|microsoft|google|netflix|bank of america|chase|wells fargo/i.test(text)
+    const isBrandDomain = /paypal|amazon|apple|microsoft|google|netflix|bankofamerica|chase|wellsfargo/i.test(location.hostname)
+    if (hasUrgency && asksCredentials) signals.push("Urgency + credential request (AI phishing pattern)")
+    if (hasUrgency && asksPersonalInfo) signals.push("Urgency + personal info request")
+    if (fakeOfficial && !isBrandDomain && brandSpoofInText) signals.push("Fake official communication from impersonated brand")
+    try {
+      const host = location.hostname.replace(/^www\./, "")
+      const BRANDS = ["paypal","amazon","google","apple","microsoft","netflix","facebook","instagram","twitter","chase","wellsfargo","bankofamerica"]
+      for (const brand of BRANDS) {
+        if (!host.includes(brand)) {
+          const normalized = host.replace(/0/g,"o").replace(/1/g,"l").replace(/rn/g,"m").replace(/vv/g,"w").replace(/-/g,"")
+          if (normalized.includes(brand) || levenshtein(host.replace(/\.[^.]+$/,""), brand) <= 2) {
+            signals.push(`Possible typosquat of "${brand}"`)
+            break
+          }
+        }
       }
-    }
-  }
-  return signals
+    } catch {}
+    return signals
+  } catch { return [] }
 }
 
 function levenshtein(a: string, b: string): number {
@@ -933,29 +1064,33 @@ function levenshtein(a: string, b: string): number {
 
 // ─── Permission Audit ─────────────────────────────────────────────────────────
 function auditPermissions(): string[] {
-  const issues: string[] = []
-  const scripts = Array.from(document.querySelectorAll("script")).map((s) => s.textContent || "").join(" ").toLowerCase()
-  if (scripts.includes("getusermedia") || scripts.includes("mediadevices")) issues.push("Requests camera/microphone access")
-  if (scripts.includes("geolocation")) issues.push("Requests location access")
-  if (scripts.includes("notifications") && scripts.includes("requestpermission")) issues.push("Requests notification permission")
-  return issues
+  try {
+    const issues: string[] = []
+    const scripts = Array.from(document.querySelectorAll("script")).map((s) => s.textContent || "").join(" ").toLowerCase()
+    if (scripts.includes("getusermedia") || scripts.includes("mediadevices")) issues.push("Requests camera/microphone access")
+    if (scripts.includes("geolocation")) issues.push("Requests location access")
+    if (scripts.includes("notifications") && scripts.includes("requestpermission")) issues.push("Requests notification permission")
+    return issues
+  } catch { return [] }
 }
 
 // ─── Proactive Auto-Scan on Page Load ────────────────────────────────────────
 let cachedResult: any = null
 
 async function runProactiveScan() {
-  const flags = detectPageFlags()
-  const trackers = detectTrackers()
-  const darkPatterns = detectDarkPatterns()
-  const cookieCount = countCookies()
-  const fingerprintingSignals = detectFingerprinting()
-  const cookieConsent = gradeCookieConsent()
-  const passwordWarnings = checkPasswordSafety()
-  const dataBroker = isDataBrokerSite()
-  const aiPhishingSignals = detectAiPhishing()
-  const permissionIssues = auditPermissions()
-  const aiGeneratedSignals = detectAiGeneratedSite()
+  // Each detector is individually guarded — one bad page can't crash the scan
+  const flags               = (() => { try { return detectPageFlags()        } catch { return [] } })()
+  const trackers            = (() => { try { return detectTrackers()          } catch { return [] } })()
+  const darkPatterns        = (() => { try { return detectDarkPatterns()      } catch { return [] } })()
+  const cookieCount         = (() => { try { return countCookies()            } catch { return 0  } })()
+  const fingerprintingSignals = (() => { try { return detectFingerprinting()  } catch { return [] } })()
+  const cookieConsent       = (() => { try { return gradeCookieConsent()      } catch { return { grade: "N/A", issues: [] } } })()
+  const passwordWarnings    = (() => { try { return checkPasswordSafety()     } catch { return [] } })()
+  const dataBroker          = (() => { try { return isDataBrokerSite()        } catch { return false } })()
+  const aiPhishingSignals   = (() => { try { return detectAiPhishing()        } catch { return [] } })()
+  const permissionIssues    = (() => { try { return auditPermissions()        } catch { return [] } })()
+  const aiGeneratedSignals  = (() => { try { return detectAiGeneratedSite()   } catch { return [] } })()
+
   const url = location.href
 
   let score = 82
@@ -967,20 +1102,21 @@ async function runProactiveScan() {
   score = Math.max(0, score
     - flags.length * 8
     - trackers.length * 2
-    - darkPatterns.length * 5
+    - darkPatterns.length * 8    // raised 5→8: single dark pattern should meaningfully impact score
     - fingerprintingSignals.length * 6
     - passwordWarnings.length * 12
     - aiPhishingSignals.length * 15
     - aiGeneratedSignals.length * 5
-    - (dataBroker ? 20 : 0)
+    - (dataBroker ? 37 : 0)     // raised 20→37: data brokers should land in HIGH RISK
     - (cookieConsent.grade === "D" ? 8 : cookieConsent.grade === "C" ? 4 : 0)
   )
 
+  // ── Safe Browsing check ──
   let isMalicious = false
   let threats: string[] = []
   try {
     const sbResult = await new Promise<any>((resolve) => {
-      chrome.runtime.sendMessage({ type: "CHECK_SAFE_BROWSING", url }, resolve)
+      safeSend({ type: "CHECK_SAFE_BROWSING", url }, resolve)
     })
     if (sbResult?.checked && !sbResult.safe) {
       isMalicious = true; threats = sbResult.threats || []
@@ -988,11 +1124,12 @@ async function runProactiveScan() {
     }
   } catch {}
 
+  // ── HIBP breach check ──
   let breachInfo: { breached: boolean; name?: string; date?: string; count?: number } = { breached: false }
   try {
     const domain = location.hostname.replace(/^www\./, "")
     const bResult = await new Promise<any>((resolve) => {
-      chrome.runtime.sendMessage({ type: "CHECK_BREACH", domain }, resolve)
+      safeSend({ type: "CHECK_BREACH", domain }, resolve)
     })
     if (bResult) { breachInfo = bResult; if (bResult.breached) score = Math.max(0, score - 10) }
   } catch {}
@@ -1003,17 +1140,17 @@ async function runProactiveScan() {
     aiPhishingSignals, permissionIssues, aiGeneratedSignals, breachInfo,
   }
 
-  chrome.runtime.sendMessage({ type: "UPDATE_BADGE", score, isMalicious, trackers: trackers.length, flags: flags.length, host: location.hostname })
+  safeSend({ type: "UPDATE_BADGE", score, isMalicious, trackers: trackers.length, flags: flags.length, host: location.hostname })
 
   if (isMalicious) {
-    chrome.runtime.sendMessage({ type: "SHOW_NOTIFICATION", title: "⚠️ Veil — Threat Detected", body: `This site was flagged by Google Safe Browsing: ${threats[0] ?? "potential threat"}.` })
+    safeSend({ type: "SHOW_NOTIFICATION", title: "⚠️ Veil — Threat Detected", body: `This site was flagged by Google Safe Browsing: ${threats[0] ?? "potential threat"}.` })
   } else if (aiPhishingSignals.length > 0) {
-    chrome.runtime.sendMessage({ type: "SHOW_NOTIFICATION", title: "Veil — AI Phishing Pattern Detected", body: `${aiPhishingSignals[0]} on ${location.hostname}` })
+    safeSend({ type: "SHOW_NOTIFICATION", title: "Veil — AI Phishing Pattern Detected", body: `${aiPhishingSignals[0]} on ${location.hostname}` })
   } else if (dataBroker) {
-    chrome.runtime.sendMessage({ type: "SHOW_NOTIFICATION", title: "Veil — Data Broker Site", body: `${location.hostname} is a known data broker that may sell your personal information.` })
+    safeSend({ type: "SHOW_NOTIFICATION", title: "Veil — Data Broker Site", body: `${location.hostname} is a known data broker that may sell your personal information.` })
   } else if (score < 65 && (flags.length >= 2 || darkPatterns.length >= 1)) {
     const total = flags.length + darkPatterns.length
-    chrome.runtime.sendMessage({ type: "SHOW_NOTIFICATION", title: "Veil — Suspicious Page", body: `${total} risk signal${total !== 1 ? "s" : ""} detected on ${location.hostname}. Score: ${score}/100` })
+    safeSend({ type: "SHOW_NOTIFICATION", title: "Veil — Suspicious Page", body: `${total} risk signal${total !== 1 ? "s" : ""} detected on ${location.hostname}. Score: ${score}/100` })
   }
 }
 
@@ -1043,15 +1180,22 @@ async function getFeatureSettings(): Promise<{ linkHoverTooltip: boolean; linkCl
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
-  const { linkHoverTooltip, linkClickInterceptor } = await getFeatureSettings()
-  runProactiveScan()
-  if (linkHoverTooltip) setupLinkHover()
-  if (linkClickInterceptor) setupLinkClickInterceptor()
+  try {
+    if (shouldSkip()) return
+    const { linkHoverTooltip, linkClickInterceptor } = await getFeatureSettings()
+    runProactiveScan()
+    if (linkHoverTooltip) setupLinkHover()
+    if (linkClickInterceptor) setupLinkClickInterceptor()
+  } catch {
+    // Fail silently — never surface errors to the page console
+  }
 }
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", init)
-} else { init() }
+} else {
+  init()
+}
 
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -1362,7 +1506,7 @@ export default function IndexPopup() {
         <>
           <Section>
             <SectionTitle>Trackers found</SectionTitle>
-            {!hasFullData ? <EmptyState text="Checking…" /> : trackers.length === 0 ? <EmptyState text="No known trackers detected." /> :
+            {!hasFullData ? <EmptyState text="Checking…" /> : trackers.length === 0 ? <EmptyState text="No trackers found — your activity isn't being shared with ad networks." variant="good" /> :
               <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
                 {trackers.map((t, i) => <Chip key={i} label={t} highlight={/meta|tiktok|doubleclick|facebook/i.test(t)} />)}
               </div>}
@@ -1477,7 +1621,7 @@ export default function IndexPopup() {
 
           <Section>
             <SectionTitle>Security flags</SectionTitle>
-            {!hasFullData ? <EmptyState text="Checking…" /> : flags.length === 0 ? <EmptyState text="No security flags found." /> : flags.map((f, i) => <FlagRow key={i} text={f} type="warn" />)}
+            {!hasFullData ? <EmptyState text="Checking…" /> : flags.length === 0 ? <EmptyState text="Nothing flagged — this page's content looks clean." variant="good" /> : flags.map((f, i) => <FlagRow key={i} text={f} type="warn" />)}
           </Section>
 
           {hasFullData && passwordWarnings.length > 0 && (

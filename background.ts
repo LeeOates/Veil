@@ -1,5 +1,3 @@
-import type { PlasmoMessaging } from "@plasmohq/messaging"
-
 export {}
 
 const HISTORY_KEY = "charlieai_history"
@@ -10,6 +8,13 @@ const tabScanCache = new Map<number, any>()
 
 // ─── Per-domain breach cache (in-memory, avoids hammering HIBP) ───────────────
 const breachCache = new Map<string, any>()
+
+// ─── First-install onboarding ─────────────────────────────────────────────────
+chrome.runtime.onInstalled.addListener((details) => {
+  if (details.reason === "install") {
+    chrome.tabs.create({ url: chrome.runtime.getURL("onboarding.html") })
+  }
+})
 
 chrome.tabs.onRemoved.addListener((tabId) => tabScanCache.delete(tabId))
 chrome.tabs.onUpdated.addListener((tabId, change) => {

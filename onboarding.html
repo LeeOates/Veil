@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to Veil</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, "SF Pro Text", "Helvetica Neue", sans-serif;
+      background: #F2F1EE;
+      color: #1A1A18;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: #FFFFFF;
+      border-bottom: 0.5px solid #E2E0DB;
+      padding: 18px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .logo {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: #FFFFFF;
+      border: 0.5px solid #E2E0DB;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .header-text h1 { font-size: 16px; font-weight: 600; letter-spacing: -0.3px; }
+    .header-text p  { font-size: 11px; color: #9E9C97; margin-top: 1px; }
+
+    /* ── Layout ── */
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      padding: 48px 24px 40px;
+    }
+    .hero-icon {
+      width: 72px; height: 72px; border-radius: 18px;
+      background: #FFFFFF;
+      border: 0.5px solid #E2E0DB;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    .hero h2 {
+      font-size: 28px; font-weight: 700; letter-spacing: -0.6px;
+      color: #1A1A18; margin-bottom: 10px;
+    }
+    .hero p {
+      font-size: 15px; color: #5A5955; line-height: 1.6;
+      max-width: 480px; margin: 0 auto 28px;
+    }
+    .hero-badges {
+      display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #FFFFFF; border: 0.5px solid #E2E0DB;
+      border-radius: 999px; padding: 5px 12px;
+      font-size: 12px; font-weight: 500; color: #5A5955;
+    }
+    .badge-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #34D399;
+    }
+
+    /* ── Section title ── */
+    .section-label {
+      font-size: 10px; font-weight: 600; letter-spacing: 1px;
+      text-transform: uppercase; color: #9E9C97;
+      margin-bottom: 12px; margin-top: 32px;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: #FFFFFF;
+      border-radius: 12px;
+      border: 0.5px solid #E2E0DB;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .card-header {
+      display: flex; align-items: flex-start; gap: 14px;
+      padding: 18px 20px;
+    }
+    .step-num {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: #F2F1EE; border: 0.5px solid #E2E0DB;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600; color: #5A5955;
+      flex-shrink: 0; margin-top: 1px;
+    }
+    .step-num.done {
+      background: #E6F4EC; border-color: #34D399; color: #1E7A3E;
+    }
+    .card-title { font-size: 14px; font-weight: 600; color: #1A1A18; margin-bottom: 3px; }
+    .card-desc  { font-size: 12px; color: #5A5955; line-height: 1.55; }
+    .card-body  { padding: 0 20px 18px 60px; }
+
+    /* ── API key input row ── */
+    .input-row {
+      display: flex; gap: 8px; align-items: center;
+      margin-top: 10px;
+    }
+    .input-row input {
+      flex: 1;
+      height: 36px; border-radius: 8px;
+      border: 0.5px solid #E2E0DB; background: #F2F1EE;
+      padding: 0 12px; font-size: 12px; color: #1A1A18;
+      font-family: inherit; outline: none;
+    }
+    .input-row input:focus { border-color: #A855F7; background: #FFFFFF; }
+    .input-row input::placeholder { color: #C4C2BC; }
+    .btn-save {
+      height: 36px; padding: 0 14px; border-radius: 8px;
+      background: #1A1A18; color: #FFFFFF;
+      border: none; font-size: 12px; font-weight: 500;
+      cursor: pointer; font-family: inherit; white-space: nowrap;
+      transition: opacity 0.15s;
+    }
+    .btn-save:hover { opacity: 0.85; }
+    .btn-save:disabled { opacity: 0.4; cursor: default; }
+    .save-status {
+      font-size: 11px; margin-top: 6px; min-height: 16px;
+      color: #1E7A3E;
+    }
+    .save-status.error { color: #B91C1C; }
+
+    /* ── Feature toggles ── */
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 11px 0;
+      border-bottom: 0.5px solid #F2F1EE;
+    }
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle-info { flex: 1; padding-right: 16px; }
+    .toggle-name { font-size: 13px; font-weight: 500; color: #1A1A18; }
+    .toggle-hint { font-size: 11px; color: #9E9C97; margin-top: 2px; }
+
+    .toggle {
+      position: relative; width: 36px; height: 20px; flex-shrink: 0;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+      position: absolute; inset: 0; border-radius: 10px;
+      background: #E2E0DB; cursor: pointer;
+      transition: background 0.2s;
+    }
+    .toggle-slider::before {
+      content: ""; position: absolute;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: #FFFFFF; top: 3px; left: 3px;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+    .toggle input:checked + .toggle-slider { background: #A855F7; }
+    .toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
+
+    /* ── API key link ── */
+    .key-link {
+      font-size: 11px; color: #9E9C97; margin-top: 8px; line-height: 1.5;
+    }
+    .key-link a { color: #1A1A18; font-weight: 500; text-decoration: none; }
+    .key-link a:hover { text-decoration: underline; }
+
+    /* ── Optional tag ── */
+    .tag-optional {
+      display: inline-block; font-size: 9px; font-weight: 600;
+      letter-spacing: 0.6px; text-transform: uppercase;
+      color: #9E9C97; background: #F2F1EE;
+      border: 0.5px solid #E2E0DB; border-radius: 4px;
+      padding: 1px 5px; margin-left: 6px; vertical-align: middle;
+    }
+    .tag-required {
+      display: inline-block; font-size: 9px; font-weight: 600;
+      letter-spacing: 0.6px; text-transform: uppercase;
+      color: #7A4F00; background: #FFF3D6;
+      border: 0.5px solid #F5C96A; border-radius: 4px;
+      padding: 1px 5px; margin-left: 6px; vertical-align: middle;
+    }
+
+    /* ── CTA footer ── */
+    .cta-bar {
+      text-align: center; margin-top: 40px;
+    }
+    .btn-cta {
+      display: inline-flex; align-items: center; gap: 8px;
+      height: 44px; padding: 0 28px; border-radius: 12px;
+      background: #1A1A18; color: #FFFFFF;
+      border: none; font-size: 14px; font-weight: 500;
+      cursor: pointer; font-family: inherit;
+      transition: opacity 0.15s;
+    }
+    .btn-cta:hover { opacity: 0.85; }
+    .cta-sub {
+      font-size: 11px; color: #9E9C97; margin-top: 10px;
+    }
+
+    /* ── Divider ── */
+    .divider {
+      height: 0.5px; background: #E2E0DB; margin: 6px 0;
+    }
+
+    /* ── What Veil checks section ── */
+    .checks-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 8px; margin-top: 4px;
+    }
+    .check-item {
+      display: flex; align-items: flex-start; gap: 8px;
+      background: #F2F1EE; border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .check-icon {
+      width: 22px; height: 22px; border-radius: 6px;
+      background: #FFFFFF; border: 0.5px solid #E2E0DB;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .check-name { font-size: 12px; font-weight: 500; color: #1A1A18; }
+    .check-desc { font-size: 11px; color: #9E9C97; margin-top: 1px; }
+
+    @media (max-width: 480px) {
+      .checks-grid { grid-template-columns: 1fr; }
+      .hero h2 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="logo">
+    <svg width="20" height="17" viewBox="0 0 13 11" fill="#A855F7" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="0" width="2" height="1"/><rect x="8" y="0" width="2" height="1"/>
+      <rect x="3" y="1" width="2" height="1"/><rect x="8" y="1" width="2" height="1"/>
+      <rect x="3" y="2" width="7" height="1"/>
+      <rect x="2" y="3" width="9" height="1"/>
+      <rect x="2" y="4" width="9" height="1"/>
+      <rect x="2" y="5" width="1" height="1"/><rect x="4" y="5" width="5" height="1"/><rect x="10" y="5" width="1" height="1"/>
+      <rect x="0" y="6" width="13" height="1"/>
+      <rect x="0" y="7" width="13" height="1"/>
+      <rect x="2" y="8" width="9" height="1"/>
+      <rect x="3" y="9" width="2" height="1"/><rect x="8" y="9" width="2" height="1"/>
+      <rect x="3" y="10" width="2" height="1"/><rect x="8" y="10" width="2" height="1"/>
+    </svg>
+  </div>
+  <div class="header-text">
+    <h1>Veil</h1>
+    <p>Your personal AI-powered privacy companion</p>
+  </div>
+</header>
+
+<main>
+
+  <!-- ── Hero ── -->
+  <div class="hero">
+    <div class="hero-icon">
+      <svg width="36" height="30" viewBox="0 0 13 11" fill="#A855F7" xmlns="http://www.w3.org/2000/svg">
+        <rect x="3" y="0" width="2" height="1"/><rect x="8" y="0" width="2" height="1"/>
+        <rect x="3" y="1" width="2" height="1"/><rect x="8" y="1" width="2" height="1"/>
+        <rect x="3" y="2" width="7" height="1"/>
+        <rect x="2" y="3" width="9" height="1"/>
+        <rect x="2" y="4" width="9" height="1"/>
+        <rect x="2" y="5" width="1" height="1"/><rect x="4" y="5" width="5" height="1"/><rect x="10" y="5" width="1" height="1"/>
+        <rect x="0" y="6" width="13" height="1"/>
+        <rect x="0" y="7" width="13" height="1"/>
+        <rect x="2" y="8" width="9" height="1"/>
+        <rect x="3" y="9" width="2" height="1"/><rect x="8" y="9" width="2" height="1"/>
+        <rect x="3" y="10" width="2" height="1"/><rect x="8" y="10" width="2" height="1"/>
+      </svg>
+    </div>
+    <h2>Welcome to Veil</h2>
+    <p>Veil scans every page you visit and gives you an instant privacy and security score — no setup required.</p>
+    <div class="hero-badges">
+      <span class="badge"><span class="badge-dot"></span>Active on all sites</span>
+      <span class="badge"><span class="badge-dot"></span>Runs locally</span>
+      <span class="badge"><span class="badge-dot"></span>No data sold</span>
+    </div>
+  </div>
+
+  <!-- ── What Veil checks ── -->
+  <p class="section-label">What Veil checks automatically</p>
+  <div class="card">
+    <div class="card-body" style="padding: 16px 20px;">
+      <div class="checks-grid">
+        <div class="check-item">
+          <div class="check-icon">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L4 6V12C4 16.4 7.4 20.5 12 22C16.6 20.5 20 16.4 20 12V6L12 2Z" stroke="#A855F7" stroke-width="1.5" fill="none"/>
+            </svg>
+          </div>
+          <div>
+            <div class="check-name">Threat detection</div>
+            <div class="check-desc">Google Safe Browsing in real time</div>
+          </div>
+        </div>
+        <div class="check-item">
+          <div class="check-icon">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="9" stroke="#A855F7" stroke-width="1.5"/>
+              <path d="M12 8v4l3 3" stroke="#A855F7" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div>
+            <div class="check-name">Tracker count</div>
+            <div class="check-desc">26 ad &amp; analytics trackers</div>
+          </div>
+        </div>
+        <div class="check-item">
+          <div class="check-icon">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="3" width="18" height="18" rx="2" stroke="#A855F7" stroke-width="1.5"/>
+              <path d="M3 9h18M9 21V9" stroke="#A855F7" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <div>
+            <div class="check-name">Dark patterns</div>
+            <div class="check-desc">Pre-checked boxes, confirm-shaming</div>
+          </div>
+        </div>
+        <div class="check-item">
+          <div class="check-icon">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" stroke="#A855F7" stroke-width="1.5" fill="none"/>
+              <path d="M12 8v4M12 16h.01" stroke="#A855F7" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div>
+            <div class="check-name">AI phishing</div>
+            <div class="check-desc">Urgency cues &amp; typosquatting</div>
+          </div>
+        </div>
+        <div class="check-item">
+          <div class="check-icon">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <rect x="5" y="2" width="14" height="20" rx="2" stroke="#A855F7" stroke-width="1.5"/>
+              <path d="M9 7h6M9 11h6M9 15h4" stroke="#A855F7" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div>
+            <div class="check-name">Cookie consent</div>
+            <div class="check-desc">Grades banners A – D</div>
+          </div>
+        </div>
+        <div class="check-item">
+          <div class="check-icon">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="#A855F7" stroke-width="1.5"/>
+              <circle cx="9" cy="7" r="4" stroke="#A855F7" stroke-width="1.5"/>
+              <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="#A855F7" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div>
+            <div class="check-name">Data brokers</div>
+            <div class="check-desc">22 known data-selling sites</div>
+          </div>
+        </div>
+        <div class="check-item">
+          <div class="check-icon">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2v-4M9 21H5a2 2 0 01-2-2v-4m0 0h18" stroke="#A855F7" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <div>
+            <div class="check-name">Fingerprinting</div>
+            <div class="check-desc">Canvas, audio, WebGL &amp; more</div>
+          </div>
+        </div>
+        <div class="check-item">
+          <div class="check-icon">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" stroke="#A855F7" stroke-width="1.5"/>
+            </svg>
+          </div>
+          <div>
+            <div class="check-name">Breach alerts</div>
+            <div class="check-desc">HaveIBeenPwned per domain</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Setup steps ── -->
+  <p class="section-label" style="margin-top: 28px;">Optional setup — unlock more features</p>
+
+  <!-- Step 1: Already active -->
+  <div class="card">
+    <div class="card-header">
+      <div class="step-num done">✓</div>
+      <div>
+        <div class="card-title">Veil is active</div>
+        <div class="card-desc">No setup needed. Click the Veil icon in your toolbar anytime to see the privacy score for the current page.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Safe Browsing key -->
+  <div class="card">
+    <div class="card-header">
+      <div class="step-num">2</div>
+      <div>
+        <div class="card-title">Add a Google Safe Browsing key <span class="tag-optional">Optional</span></div>
+        <div class="card-desc">Enables real-time URL threat checking against Google's database. Free — takes about 2 minutes to set up.</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="input-row">
+        <input type="password" id="sb-key" placeholder="Paste your API key here" autocomplete="off" />
+        <button class="btn-save" id="sb-save">Save</button>
+      </div>
+      <p class="save-status" id="sb-status"></p>
+      <p class="key-link">
+        Get a free key at <a href="https://developers.google.com/safe-browsing/v4/get-started" target="_blank">developers.google.com</a> →
+        Create Project → Enable "Safe Browsing API" → Create API Key
+      </p>
+    </div>
+  </div>
+
+  <!-- Step 3: Anthropic key -->
+  <div class="card">
+    <div class="card-header">
+      <div class="step-num">3</div>
+      <div>
+        <div class="card-title">Add an Anthropic API key <span class="tag-optional">Optional</span></div>
+        <div class="card-desc">Powers the "Explained by Charlie" AI summary in the popup — a plain-English explanation of what Veil found on the page.</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="input-row">
+        <input type="password" id="ai-key" placeholder="sk-ant-..." autocomplete="off" />
+        <button class="btn-save" id="ai-save">Save</button>
+      </div>
+      <p class="save-status" id="ai-status"></p>
+      <p class="key-link">
+        Get a key at <a href="https://console.anthropic.com/settings/keys" target="_blank">console.anthropic.com</a> →
+        API Keys → Create Key. New accounts include free credits.
+      </p>
+    </div>
+  </div>
+
+  <!-- Step 4: Feature toggles -->
+  <div class="card">
+    <div class="card-header">
+      <div class="step-num">4</div>
+      <div>
+        <div class="card-title">Enable optional features</div>
+        <div class="card-desc">All off by default. Turn on what you want — changes save instantly.</div>
+      </div>
+    </div>
+    <div class="card-body" style="padding-top: 4px;">
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-name">Link hover tooltip</div>
+          <div class="toggle-hint">Shows a risk score when you hover over any link on the page</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-hover" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-name">Risky link warning</div>
+          <div class="toggle-hint">Intercepts clicks on suspicious links and shows a warning overlay</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-intercept" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-name">Toolbar badge score</div>
+          <div class="toggle-hint">Shows the page risk score on the Veil icon in your toolbar</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-badge" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-name">Threat notifications</div>
+          <div class="toggle-hint">Desktop alert when Veil detects a serious threat on a page</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-notify" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CTA ── -->
+  <div class="cta-bar">
+    <button class="btn-cta" id="btn-settings">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="3" stroke="#FFFFFF" stroke-width="1.5"/>
+        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="#FFFFFF" stroke-width="1.5"/>
+      </svg>
+      Open Full Settings
+    </button>
+    <p class="cta-sub">All settings and scan history are available in the Veil options page</p>
+  </div>
+
+</main>
+
+<script>
+  const SETTINGS_KEY = "charlieai_settings"
+
+  // ── Load saved settings ──
+  chrome.storage.local.get(SETTINGS_KEY, (data) => {
+    const s = data[SETTINGS_KEY] || {}
+    document.getElementById("toggle-hover").checked     = !!s.linkHoverTooltip
+    document.getElementById("toggle-intercept").checked = !!s.linkClickInterceptor
+    document.getElementById("toggle-badge").checked     = s.iconBadge !== false
+    document.getElementById("toggle-notify").checked    = s.threatNotifications !== false
+    if (s.safeBrowsingKey) {
+      document.getElementById("sb-key").value = "••••••••••••••••"
+      document.getElementById("sb-key").dataset.saved = "true"
+      document.getElementById("sb-status").textContent = "✓ Key saved"
+    }
+    if (s.anthropicKey) {
+      document.getElementById("ai-key").value = "••••••••••••••••"
+      document.getElementById("ai-key").dataset.saved = "true"
+      document.getElementById("ai-status").textContent = "✓ Key saved"
+    }
+  })
+
+  // ── Save toggles immediately on change ──
+  function saveToggle() {
+    chrome.storage.local.get(SETTINGS_KEY, (data) => {
+      const s = data[SETTINGS_KEY] || {}
+      s.linkHoverTooltip    = document.getElementById("toggle-hover").checked
+      s.linkClickInterceptor = document.getElementById("toggle-intercept").checked
+      s.iconBadge           = document.getElementById("toggle-badge").checked
+      s.threatNotifications = document.getElementById("toggle-notify").checked
+      chrome.storage.local.set({ [SETTINGS_KEY]: s })
+    })
+  }
+  ["toggle-hover","toggle-intercept","toggle-badge","toggle-notify"].forEach((id) => {
+    document.getElementById(id).addEventListener("change", saveToggle)
+  })
+
+  // ── Save API key helper ──
+  function saveKey(inputId, statusId, storageField) {
+    const input  = document.getElementById(inputId)
+    const status = document.getElementById(statusId)
+    const value  = input.value.trim()
+    if (!value || input.dataset.saved === "true") return
+    chrome.storage.local.get(SETTINGS_KEY, (data) => {
+      const s = data[SETTINGS_KEY] || {}
+      s[storageField] = value
+      chrome.storage.local.set({ [SETTINGS_KEY]: s }, () => {
+        input.value = "••••••••••••••••"
+        input.dataset.saved = "true"
+        status.textContent = "✓ Key saved"
+        status.className = "save-status"
+      })
+    })
+  }
+
+  // ── Clear saved flag when user types ──
+  document.getElementById("sb-key").addEventListener("input", function() {
+    this.dataset.saved = "false"
+    document.getElementById("sb-status").textContent = ""
+  })
+  document.getElementById("ai-key").addEventListener("input", function() {
+    this.dataset.saved = "false"
+    document.getElementById("ai-status").textContent = ""
+  })
+
+  document.getElementById("sb-save").addEventListener("click", () =>
+    saveKey("sb-key", "sb-status", "safeBrowsingKey"))
+  document.getElementById("ai-save").addEventListener("click", () =>
+    saveKey("ai-key", "ai-status", "anthropicKey"))
+
+  // ── Open options page ──
+  document.getElementById("btn-settings").addEventListener("click", () => {
+    chrome.runtime.openOptionsPage()
+  })
+</script>
+
+</body>
+</html>

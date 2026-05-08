@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type RiskBand = "safe" | "caution" | "danger"
@@ -73,6 +73,10 @@ const GLOBAL_STYLES = `
     100% { background-position: -200% 0; }
   }
   @keyframes veil-fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes veil-tabIn {
     from { opacity: 0; transform: translateY(5px); }
     to   { opacity: 1; transform: translateY(0); }
   }
@@ -115,12 +119,39 @@ function getBand(score: number): RiskBand {
   return "danger"
 }
 
+// ─── Count-up animation hook ──────────────────────────────────────────────────
+function useCountUp(target: number, duration = 700): number {
+  const [displayed, setDisplayed] = useState(0)
+  const rafRef  = useRef<number | null>(null)
+  const startTs = useRef<number | null>(null)
+  const fromVal = useRef(0)
+
+  useEffect(() => {
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current)
+    fromVal.current = displayed
+    startTs.current = null
+
+    const tick = (ts: number) => {
+      if (startTs.current === null) startTs.current = ts
+      const t = Math.min((ts - startTs.current) / duration, 1)
+      const eased = 1 - Math.pow(1 - t, 3)               // easeOutCubic
+      setDisplayed(Math.round(fromVal.current + (target - fromVal.current) * eased))
+      if (t < 1) rafRef.current = requestAnimationFrame(tick)
+    }
+    rafRef.current = requestAnimationFrame(tick)
+    return () => { if (rafRef.current !== null) cancelAnimationFrame(rafRef.current) }
+  }, [target])                                             // eslint-disable-line
+
+  return displayed
+}
+
 // ─── Score Ring ───────────────────────────────────────────────────────────────
 function ScoreRing({ score, band }: { score: number; band: RiskBand }) {
   const { ring } = getStatusConfig(band)
+  const displayedScore = useCountUp(score, 750)
   const r = 24
   const circ = 2 * Math.PI * r
-  const filled = (score / 100) * circ
+  const filled = (displayedScore / 100) * circ
   return (
     <div style={{ position: "relative", width: 60, height: 60, flexShrink: 0 }}>
       <svg width="60" height="60" viewBox="0 0 60 60" style={{ position: "absolute", top: 0, left: 0 }}>
@@ -129,7 +160,7 @@ function ScoreRing({ score, band }: { score: number; band: RiskBand }) {
           cx="30" cy="30" r={r} fill="none" stroke={ring} strokeWidth="5"
           strokeDasharray={`${filled} ${circ}`} strokeLinecap="round"
           transform="rotate(-90 30 30)"
-          style={{ transition: "stroke-dasharray 0.85s cubic-bezier(.4,0,.2,1), stroke 0.4s ease" }}
+          style={{ transition: "stroke 0.4s ease" }}
         />
       </svg>
       <div style={{
@@ -140,7 +171,7 @@ function ScoreRing({ score, band }: { score: number; band: RiskBand }) {
         letterSpacing: "-0.5px",
         transition: "color 0.4s ease",
       }}>
-        {score}
+        {displayedScore}
       </div>
     </div>
   )
@@ -873,7 +904,7 @@ footer{text-align:center;font-size:11px;color:#C4C2BC;margin-top:28px}
       </div>
 
       {/* ── Tab Content (keyed for fade animation on tab switch) ── */}
-      <div key={tab} style={{ animation: "veil-fadeIn 0.18s ease both" }}>
+      <div key={tab} style={{ animation: "veil-tabIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) both" }}>
 
         {/* ── Privacy Tab ── */}
         {tab === "privacy" && (

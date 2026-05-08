@@ -94,11 +94,10 @@ function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) =
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
-function Toast({ message, type }: { message: string; type: "success" | "error" }) {
+function Toast({ message, type, leaving }: { message: string; type: "success" | "error"; leaving: boolean }) {
   return (
     <div style={{
       position: "fixed", bottom: 24, left: "50%",
-      transform: "translateX(-50%)",
       background: type === "success" ? tokens.green : tokens.red,
       color: "#fff",
       padding: "10px 20px",
@@ -106,6 +105,9 @@ function Toast({ message, type }: { message: string; type: "success" | "error" }
       fontSize: 13, fontWeight: 500,
       boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
       zIndex: 999,
+      animation: leaving
+        ? "veil-toastOut 0.25s cubic-bezier(0.4, 0, 1, 1) both"
+        : "veil-toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both",
     }}>
       {message}
     </div>
@@ -124,7 +126,7 @@ export default function OptionsPage() {
   const [iconBadge, setIconBadge] = useState(false)
   const [saved, setSaved]                       = useState(false)
   const [historyCount, setHistoryCount] = useState(0)
-  const [toast, setToast]             = useState<{ message: string; type: "success" | "error" } | null>(null)
+  const [toast, setToast]             = useState<{ message: string; type: "success" | "error"; leaving: boolean } | null>(null)
   const [testing, setTesting]         = useState(false)
   const [testResult, setTestResult]   = useState<"none" | "valid" | "invalid">("none")
   const [anthropicTesting, setAnthropicTesting] = useState(false)
@@ -146,8 +148,9 @@ export default function OptionsPage() {
   }, [])
 
   function showToast(message: string, type: "success" | "error") {
-    setToast({ message, type })
-    setTimeout(() => setToast(null), 3000)
+    setToast({ message, type, leaving: false })
+    setTimeout(() => setToast(prev => prev ? { ...prev, leaving: true } : null), 2500)
+    setTimeout(() => setToast(null), 2800)
   }
 
   function saveSettings() {
@@ -258,6 +261,14 @@ export default function OptionsPage() {
           outline: 2px solid #A855F7;
           outline-offset: 3px;
           border-radius: 999px;
+        }
+        @keyframes veil-toastIn {
+          from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+          to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        @keyframes veil-toastOut {
+          from { opacity: 1; transform: translateX(-50%) translateY(0); }
+          to   { opacity: 0; transform: translateX(-50%) translateY(8px); }
         }
       `}</style>
 
@@ -570,7 +581,7 @@ export default function OptionsPage() {
       </div>
 
       {/* ── Toast ── */}
-      {toast && <Toast message={toast.message} type={toast.type} />}
+      {toast && <Toast message={toast.message} type={toast.type} leaving={toast.leaving} />}
     </div>
   )
 }

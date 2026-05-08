@@ -90,6 +90,20 @@
 //   • tsconfig.json: added MASTERCODE.ts to exclude list (prevents backup file from polluting
 //     type-checking — was surfacing false positives across the project)
 //
+// [2026-05-08] — Phase 2.6: Animation polish
+//   • popup.tsx: useCountUp(target, duration) hook — rAF loop, easeOutCubic, cancels on
+//     re-trigger; ScoreRing uses it so the number counts up smoothly (0→score) on load
+//     and re-animates on rescan; SVG arc strokeDasharray now driven by displayedScore
+//     (single source of truth) — stroke CSS transition kept for colour band changes
+//   • popup.tsx: veil-tabIn keyframe added; tab content div uses
+//     cubic-bezier(0.16, 1, 0.3, 1) (easeOutExpo) — snappier spring feel vs old "ease"
+//   • popup.tsx: veil-fadeIn translateY 5px → 4px (slightly tighter entrance)
+//   • options.tsx: Toast — added veil-toastIn / veil-toastOut keyframes in <style>;
+//     Toast component uses veil-toastIn on enter (0.3s spring), veil-toastOut on exit
+//   • options.tsx: showToast phased exit — sets leaving:true at 2500ms, removes from DOM
+//     at 2800ms (300ms exit window), total visible time unchanged (~3s)
+//   • options.tsx: toast state type extended with leaving:boolean field
+//
 // [2026-05-08] — Phase 2.5: Keyboard accessibility
 //   • popup.tsx: GLOBAL_STYLES — added *:focus-visible ring (2px solid #A855F7, offset 2px)
 //   • popup.tsx: tab buttons — added role="tab" + aria-selected={tab === t}

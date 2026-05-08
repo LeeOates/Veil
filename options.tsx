@@ -65,15 +65,21 @@ function VeilLogo() {
 }
 
 // ─── Toggle Switch ────────────────────────────────────────────────────────────
-function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
     <div
+      role="switch"
+      aria-checked={on}
+      aria-label={label}
+      tabIndex={0}
       onClick={() => onChange(!on)}
+      onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); onChange(!on) } }}
       style={{
         width: 42, height: 24, borderRadius: 999,
         background: on ? tokens.green : tokens.borderStrong,
         position: "relative", cursor: "pointer",
         transition: "background 0.2s ease", flexShrink: 0,
+        outline: "none",
       }}>
       <div style={{
         position: "absolute", top: 3,
@@ -241,6 +247,19 @@ export default function OptionsPage() {
       fontFamily: "-apple-system, 'SF Pro Text', 'Helvetica Neue', sans-serif",
       color: tokens.textPrimary,
     }}>
+      <style>{`
+        *:focus { outline: none; }
+        *:focus-visible {
+          outline: 2px solid #A855F7;
+          outline-offset: 2px;
+          border-radius: 4px;
+        }
+        [role="switch"]:focus-visible {
+          outline: 2px solid #A855F7;
+          outline-offset: 3px;
+          border-radius: 999px;
+        }
+      `}</style>
 
       {/* ── Header ── */}
       <div style={{
@@ -311,6 +330,7 @@ export default function OptionsPage() {
                 />
                 <button
                   onClick={() => setShowKey(!showKey)}
+                  aria-label={showKey ? "Hide Safe Browsing API key" : "Show Safe Browsing API key"}
                   style={{
                     position: "absolute", right: 10, top: "50%",
                     transform: "translateY(-50%)",
@@ -385,7 +405,9 @@ export default function OptionsPage() {
                     outline: "none", boxSizing: "border-box", transition: "border-color 0.2s",
                   }}
                 />
-                <button onClick={() => setShowAnthropicKey(!showAnthropicKey)}
+                <button
+                  onClick={() => setShowAnthropicKey(!showAnthropicKey)}
+                  aria-label={showAnthropicKey ? "Hide Anthropic API key" : "Show Anthropic API key"}
                   style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 14, color: tokens.textTertiary, padding: 2 }}>
                   {showAnthropicKey ? "🙈" : "👁"}
                 </button>
@@ -438,7 +460,7 @@ export default function OptionsPage() {
                 Show a risk score when hovering over links on any page
               </div>
             </div>
-            <Toggle on={linkHoverTooltip} onChange={setLinkHoverTooltip} />
+            <Toggle on={linkHoverTooltip} onChange={setLinkHoverTooltip} label="Link hover tooltip" />
           </div>
 
           {/* Link click interceptor */}
@@ -452,7 +474,7 @@ export default function OptionsPage() {
                 Block navigation and show a warning when clicking a high-risk link
               </div>
             </div>
-            <Toggle on={linkClickInterceptor} onChange={setLinkClickInterceptor} />
+            <Toggle on={linkClickInterceptor} onChange={setLinkClickInterceptor} label="Risky link warning" />
           </div>
 
           {/* Icon badge */}
@@ -466,7 +488,7 @@ export default function OptionsPage() {
                 Show risk score on the extension icon with a colour indicator and hover summary
               </div>
             </div>
-            <Toggle on={iconBadge} onChange={setIconBadge} />
+            <Toggle on={iconBadge} onChange={setIconBadge} label="Icon badge and hover info" />
           </div>
 
           {/* Threat notifications */}
@@ -480,7 +502,7 @@ export default function OptionsPage() {
                 Show a Chrome notification when Veil detects a high-risk page
               </div>
             </div>
-            <Toggle on={notifications} onChange={setNotifications} />
+            <Toggle on={notifications} onChange={setNotifications} label="Threat notifications" />
           </div>
         </div>
 

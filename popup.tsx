@@ -92,6 +92,14 @@ const GLOBAL_STYLES = `
     from { opacity: 0; transform: translateY(6px); }
     to   { opacity: 1; transform: translateY(0); }
   }
+
+  /* ── Keyboard focus ring (visible only for keyboard nav) ── */
+  *:focus { outline: none; }
+  *:focus-visible {
+    outline: 2px solid #A855F7;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
 `
 
 // ─── Status config ────────────────────────────────────────────────────────────
@@ -850,8 +858,18 @@ footer{text-align:center;font-size:11px;color:#C4C2BC;margin-top:28px}
         borderBottom: `0.5px solid ${tokens.borderDefault}`,
         padding: "0 18px",
       }}>
-        <button style={tabStyle("privacy")} onClick={() => setTab("privacy")}>Privacy</button>
-        <button style={tabStyle("security")} onClick={() => setTab("security")}>Security</button>
+        <button
+          role="tab"
+          aria-selected={tab === "privacy"}
+          style={tabStyle("privacy")}
+          onClick={() => setTab("privacy")}
+        >Privacy</button>
+        <button
+          role="tab"
+          aria-selected={tab === "security"}
+          style={tabStyle("security")}
+          onClick={() => setTab("security")}
+        >Security</button>
       </div>
 
       {/* ── Tab Content (keyed for fade animation on tab switch) ── */}
@@ -1254,6 +1272,7 @@ footer{text-align:center;font-size:11px;color:#C4C2BC;margin-top:28px}
           <button
             onClick={() => chrome.runtime.openOptionsPage()}
             title="Settings"
+            aria-label="Open settings"
             style={{
               background: "none", border: "none", padding: "3px 5px",
               cursor: "pointer", color: tokens.textTertiary,
@@ -1264,6 +1283,8 @@ footer{text-align:center;font-size:11px;color:#C4C2BC;margin-top:28px}
           <button
             onClick={() => setExportOpen(v => !v)}
             title="Export report"
+            aria-label="Export report"
+            aria-expanded={exportOpen}
             style={{
               background: "none", border: "none", padding: "3px 5px",
               cursor: "pointer", borderRadius: 6,
@@ -1282,6 +1303,7 @@ footer{text-align:center;font-size:11px;color:#C4C2BC;margin-top:28px}
         <button
           onClick={runScan}
           disabled={scanning}
+          aria-label={scanning ? "Scanning…" : "Re-scan this page"}
           style={{
             fontSize: 11,
             padding: "4px 11px",

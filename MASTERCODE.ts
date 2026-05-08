@@ -90,6 +90,20 @@
 //   • tsconfig.json: added MASTERCODE.ts to exclude list (prevents backup file from polluting
 //     type-checking — was surfacing false positives across the project)
 //
+// [2026-05-08] — Phase 2.5: Keyboard accessibility
+//   • popup.tsx: GLOBAL_STYLES — added *:focus-visible ring (2px solid #A855F7, offset 2px)
+//   • popup.tsx: tab buttons — added role="tab" + aria-selected={tab === t}
+//   • popup.tsx: settings button — added aria-label="Open settings"
+//   • popup.tsx: export button — added aria-label="Export report" + aria-expanded={exportOpen}
+//   • popup.tsx: rescan button — added aria-label (dynamic: "Scanning…" / "Re-scan this page")
+//   • options.tsx: Toggle — was a plain <div onClick>, now fully accessible:
+//       role="switch", aria-checked={on}, tabIndex={0}, onKeyDown (Space/Enter toggles)
+//       label prop added; focus ring uses border-radius:999px for pill shape
+//   • options.tsx: all 4 Toggle instances — label prop passed with feature name
+//   • options.tsx: Safe Browsing show/hide button — aria-label (Show/Hide Safe Browsing API key)
+//   • options.tsx: Anthropic show/hide button — aria-label (Show/Hide Anthropic API key)
+//   • options.tsx: global focus-visible styles injected via <style> tag in return
+//
 // [2026-05-07] — Phase 2.3: Icon set — sharp rendering + greyscale inactive variant
 //   • assets/icon{16,32,48,128}.png: re-rendered from extracted 16×14 logical pixel grid
 //     using nearest-neighbor at exact integer dot sizes (1/2/3/8 px per dot respectively)
